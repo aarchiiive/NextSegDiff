@@ -4,6 +4,7 @@ import random
 sys.path.append(".")
 from guided_diffusion.utils import staple
 
+import glob
 import numpy
 import numpy as np
 import torch
@@ -20,6 +21,7 @@ from torch.autograd import Variable
 from torch import autograd
 import math
 from PIL import Image
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 from guided_diffusion.utils import staple
 import argparse
@@ -87,13 +89,13 @@ def total_area_to_metrics(total_area_intersect, total_area_union,
     return ret_metrics 
 
 
-def pre_eval(pred, seg_map):
+def pre_eval(pred, seg_map, num_classes):
     pre_eval_results = []
     pre_eval_results.append(
         intersect_and_union(
             pred,
             seg_map,
-            2))
+            num_classes))
     return pre_eval_results
 
 
@@ -126,40 +128,58 @@ def f_score(precision, recall, beta=1):
 
 def main():
     argParser = argparse.ArgumentParser()
-    argParser.add_argument("--inp_pth", default='')
-    argParser.add_argument("--out_pth", default='')
+    argParser.add_argument("--org_pth") # AMOS2D/imagesVa
+    argParser.add_argument("--inp_pth") # AMOS2D/preds/diff_100_ens_5
+    argParser.add_argument("--out_pth") # AMOS2D/labelsVa_perclass
+    argParser.add_argument("--data_name")
     args = argParser.parse_args()
     mix_res = (0,0)
     num = 0
+    
+    org_path = args.org_pth
     pred_path = args.inp_pth
     gt_path = args.out_pth
+    
+    res_path = os.path.join(pred_path, "dice_per_class")
+    if not os.path.isdir(res_path): os.mkdir(res_path)
+    pred_images = glob.glob(os.path.join(pred_path, "*.jpg"))
+    pred_images = [p for p in pred_images if "output" in p]
+    
+    class_names = ("background", "spleen", "right kidney", "left kidney", 
+                   "gall bladder", "esophagus", "liver", "stomach", "arota", 
+                   "postcava", "pancreas", "right adrenal gland", "left adrenal gland", 
+                   "duodenum", "bladder", "prostate/uterus")
+    
     results = []
-    for root, dirs, files in os.walk(pred_path, topdown=False):
-        for name in files:              # 4.30 files=['area14_0_1792_256_2048.jpg',....]
-            #if 'ens' in name: 4.23 注释
-            num += 1
-            ind = name.split('_')[0]    # 4.30 ind 'area14'
-            pred = Image.open(os.path.join(root, name)).convert('L')
-            gt_name = os.path.splitext(name)[0] + ".tif"
-            #gt_name = "beijing_" + ind + ".tif"
-            gt = Image.open(os.path.join(gt_path, gt_name)).convert('L')
-            pred = torchvision.transforms.PILToTensor()(pred)
-            pred = torch.unsqueeze(pred,0).float() 
-            pred = pred / pred.max()
-            # if args.debug:
-            #     print('pred max is', pred.max())
-            #     vutils.save_image(pred, fp = os.path.join('./results/' + str(ind)+'pred.jpg'), nrow = 1, padding = 10)
-            gt = torchvision.transforms.PILToTensor()(gt)
-            gt = torchvision.transforms.Resize((256,256))(gt)
-            gt = torch.unsqueeze(gt,0).float() / 255.0
-            # if args.debug:
-            #     vutils.save_image(gt, fp = os.path.join('./results/' + str(ind)+'gt.jpg'), nrow = 1, padding = 10)
-            #temp = eval_seg(pred, gt)
-            result = pre_eval(pred, gt)
-            results.extend(result)
-
+    for pred_img in tqdm(pred_images):
+        #if 'ens' in name: 4.23 注释
+        num += 1
+        org_name = '_'.join(os.path.basename(pred_img).split('_')[:4]) + '.png'
+        org = Image.open(os.path.join(org_path, org_name)).convert('RGB')
+        org = torchvision.transforms.PILToTensor()(org)
+        org = torch.unsqueeze(org, 0).float()
+        org = torchvision.transforms.Resize((256,256))(org)
+        
+        pred = Image.open(pred_img).convert('L')
+        gt_name = '_'.join(os.path.basename(pred_img).split('_')[:4]) + '.png'
+        #gt_name = "beijing_" + ind + ".tif"
+        gt = Image.open(os.path.join(gt_path, gt_name)).convert('L')
+        pred = torchvision.transforms.PILToTensor()(pred)
+        pred = torch.unsqueeze(pred,0).float() 
+        pred = pred / pred.max()
+        # if args.debug:
+        #     print('pred max is', pred.max())
+        #     vutils.save_image(pred, fp = os.path.join('./results/' + str(ind)+'pred.jpg'), nrow = 1, padding = 10)
+        gt = torchvision.transforms.PILToTensor()(gt)
+        gt = torchvision.transforms.Resize((256,256))(gt)
+        gt = torch.unsqueeze(gt,0).float() / 255.0
+        # if args.debug:
+        #     vutils.save_image(gt, fp = os.path.join('./results/' + str(ind)+'gt.jpg'), nrow = 1, padding = 10)
+        #temp = eval_seg(pred, gt)
+        result = pre_eval(pred, gt, len(class_names))
+        results.extend(result)
+        
     ret_metrics = eval(results)
-    class_names = ('class1', 'class2')
 
     # summary table
     ret_metrics_summary = OrderedDict({

@@ -1,0 +1,25 @@
+# training
+python3 scripts/segmentation_train.py --data_name ISIC --data_dir ISIC_2016 --out_dir ISIC_2016/outputs --image_size 128 --num_channels 128 --class_cond False --num_res_blocks 2 --num_heads 1 --learn_sigma True --use_scale_shift_norm False --attention_resolutions 16 --diffusion_steps 1000 --noise_schedule linear --rescale_learned_sigmas False --rescale_timesteps False --lr 1e-4 --batch_size 8 --multi_gpu 0,1,2,3
+
+# training(AMOS)
+python3 scripts/segmentation_train.py --data_name AMOS --data_dir amos --out_dir amos/outputs --image_size 256 --num_channels 128 --class_cond False --num_res_blocks 2 --num_heads 1 --learn_sigma True --use_scale_shift_norm False --attention_resolutions 16 --diffusion_steps 1000 --noise_schedule linear --rescale_learned_sigmas False --rescale_timesteps False --lr 1e-4 --batch_size 8 --multi_gpu 0,1,2,3
+python3 scripts/segmentation_train.py --data_name AMOS --data_dir amos22 --out_dir amos22/outputs --image_size 256 --num_channels 128 --class_cond False --num_res_blocks 2 --num_heads 1 --learn_sigma True --use_scale_shift_norm False --attention_resolutions 16 --diffusion_steps 1000 --noise_schedule linear --rescale_learned_sigmas False --rescale_timesteps False --lr 1e-4 --batch_size 8 --crop_size=48 --multi_gpu 0,1,2,3
+# resuming training(AMOS)
+python3 scripts/segmentation_train.py --data_name AMOS --data_dir amos22 --out_dir amos22/outputs --resume_checkpoint amos22/outputs/savedmodel002000.pt --image_size 256 --num_channels 128 --class_cond False --num_res_blocks 2 --num_heads 1 --learn_sigma True --use_scale_shift_norm False --attention_resolutions 16 --diffusion_steps 1000 --noise_schedule linear --rescale_learned_sigmas False --rescale_timesteps False --lr 1e-4 --batch_size 8 --crop_size=48 --multi_gpu 0,1,2,3
+
+python3 scripts/segmentation_train.py --data_name AMOS2D --data_dir AMOS2D --out_dir AMOS2D/outputs --image_size 256 --num_channels 128 --class_cond False --num_res_blocks 2 --num_heads 1 --learn_sigma True --use_scale_shift_norm False --attention_resolutions 16 --diffusion_steps 1000 --noise_schedule linear --rescale_learned_sigmas False --rescale_timesteps False --lr 1e-4 --batch_size 32 --multi_gpu 0,1,2,3,4
+
+
+
+# testing
+python3 scripts/segmentation_sample.py --data_name ISIC --data_dir ISIC_2016 --out_dir ISIC_2016 --model_path ISIC_2016/outputs/savedmodel005000.pt --image_size 128 --num_channels 128 --class_cond False --num_res_blocks 2 --num_heads 1 --learn_sigma True --use_scale_shift_norm False --attention_resolutions 16 --diffusion_steps 1000 --noise_schedule linear --rescale_learned_sigmas False --rescale_timesteps False --num_ensemble 5 --debug True
+python3 scripts/segmentation_sample.py --data_name AMOS2D --data_dir AMOS --out_dir AMOS/preds --model_path AMOS/outputs/savedmodel015000.pt --image_size 256 --num_channels 128 --class_cond False --num_res_blocks 2 --num_heads 1 --learn_sigma True --use_scale_shift_norm False --attention_resolutions 16 --diffusion_steps 1000 --noise_schedule linear --rescale_learned_sigmas False --rescale_timesteps False --num_ensemble 5 --batch_size 1 --crop_size=48
+python3 scripts/segmentation_sample.py --data_name AMOS3D --data_dir amos22 --out_dir amos22/preds --model_path amos22/outputs/savedmodel013000.pt --image_size 256 --num_channels 128 --class_cond False --num_res_blocks 2 --num_heads 1 --learn_sigma True --use_scale_shift_norm False --attention_resolutions 16 --diffusion_steps 1000 --noise_schedule linear --rescale_learned_sigmas False --rescale_timesteps False --num_ensemble 3 --batch_size 1 --crop_size=48
+
+
+python3 scripts/segmentation_sample.py --data_name AMOS2D --data_dir AMOS2D --out_dir AMOS2D/preds --model_path AMOS2D/outputs/savedmodel013000.pt --image_size 256 --num_channels 128 --class_cond False --num_res_blocks 2 --num_heads 1 --learn_sigma True --use_scale_shift_norm False --attention_resolutions 16 --diffusion_steps 500 --noise_schedule linear --rescale_learned_sigmas False --rescale_timesteps False --num_ensemble 5 --batch_size 1 --debug True
+python3 scripts/segmentation_sample.py --data_name AMOS2D --data_dir _AMOS --out_dir _AMOS/preds --model_path _AMOS/outputs/savedmodel015000.pt --image_size 256 --num_channels 128 --class_cond False --num_res_blocks 2 --num_heads 1 --learn_sigma True --use_scale_shift_norm False --attention_resolutions 16 --diffusion_steps 250 --noise_schedule linear --rescale_learned_sigmas False --rescale_timesteps False --num_ensemble 5 --batch_size 1 --debug True
+
+# dice
+python3 scripts/segmentation_env.py --org_pth AMOS2D/imagesVa --inp_pth AMOS2D/preds/diff_100_ens_5 --out_pth AMOS2D/labelsVa
+python3 scripts/segmentation_env.py --org_pth _AMOS/imagesVa --inp_pth _AMOS/preds/diff_250_ens_5 --out_pth _AMOS/labelsVa

@@ -3,7 +3,9 @@ import inspect
 
 from . import gaussian_diffusion as gd
 from .respace import SpacedDiffusion, space_timesteps
-from .unet import SuperResModel, UNetModel_newpreview, UNetModel_v1preview, EncoderUNetModel
+from .unet import UNetModel_newpreview
+from .model_v1 import UNetModel_v1preview, SuperResModel
+from .encoder_unet import EncoderUNetModel
 
 NUM_CLASSES = 2
 
@@ -462,6 +464,7 @@ def add_dict_to_argparser(parser, default_dict):
         elif isinstance(v, bool):
             v_type = str2bool
         parser.add_argument(f"--{k}", default=v, type=v_type)
+    print(parser)
 
 
 def args_to_dict(args, keys):

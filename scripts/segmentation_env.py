@@ -4,6 +4,9 @@ import random
 sys.path.append(".")
 from guided_diffusion.utils import staple
 
+from tqdm import tqdm
+import pandas as pd
+import glob
 import numpy
 import numpy as np
 import torch
@@ -19,7 +22,7 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 from torch import autograd
 import math
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import matplotlib.pyplot as plt
 from guided_diffusion.utils import staple
 import argparse
@@ -57,7 +60,7 @@ class DiceCoeff(Function):
         t = (2 * self.inter.float() + eps) / self.union.float()
         return t
 
-    # This function has only a single output, so it gets only one gradient
+    # This function has only a single output, so it gets only one ㅔㅛgradient
     def backward(self, grad_output):
 
         input, target = self.saved_variables
@@ -135,37 +138,71 @@ def eval_seg(pred,true_mask_p,threshold = (0.1, 0.3, 0.5, 0.7, 0.9)):
 
 def main():
     argParser = argparse.ArgumentParser()
-    argParser.add_argument("--inp_pth")
-    argParser.add_argument("--out_pth")
+    argParser.add_argument("--org_pth") # AMOS2D/imagesVa
+    argParser.add_argument("--inp_pth") # AMOS2D/preds/diff_100_ens_5
+    argParser.add_argument("--out_pth") # AMOS2D/labelsVa
+    argParser.add_argument("--data_name")
+    
     args = argParser.parse_args()
     mix_res = (0,0)
     num = 0
+    
+    org_path = args.org_pth
     pred_path = args.inp_pth
     gt_path = args.out_pth
-    for root, dirs, files in os.walk(pred_path, topdown=False):
-        for name in files:
-            if 'ens' in name:
-                num += 1
-                ind = name.split('_')[0]
-                pred = Image.open(os.path.join(root, name)).convert('L')
-                gt_name = "ISIC_" + ind + "_Segmentation.png"
-                gt = Image.open(os.path.join(gt_path, gt_name)).convert('L')
-                pred = torchvision.transforms.PILToTensor()(pred)
-                pred = torch.unsqueeze(pred,0).float() 
-                pred = pred / pred.max()
-                # if args.debug:
-                #     print('pred max is', pred.max())
-                #     vutils.save_image(pred, fp = os.path.join('./results/' + str(ind)+'pred.jpg'), nrow = 1, padding = 10)
-                gt = torchvision.transforms.PILToTensor()(gt)
-                gt = torchvision.transforms.Resize((256,256))(gt)
-                gt = torch.unsqueeze(gt,0).float() / 255.0
-                # if args.debug:
-                #     vutils.save_image(gt, fp = os.path.join('./results/' + str(ind)+'gt.jpg'), nrow = 1, padding = 10)
-                temp = eval_seg(pred, gt)
-                mix_res = tuple([sum(a) for a in zip(mix_res, temp)])
+    
+    res_path = os.path.join(pred_path, "dice")
+    if not os.path.isdir(res_path): os.mkdir(res_path)
+    pred_images = glob.glob(os.path.join(pred_path, "*.jpg"))
+    pred_images = [p for p in pred_images if "output" in p]
+    
+    results_list = []
+    
+    for pred_img in tqdm(pred_images):
+        num += 1
+        org_name = '_'.join(os.path.basename(pred_img).split('_')[:4]) + '.png'
+        org = Image.open(os.path.join(org_path, org_name)).convert('RGB')
+        org = torchvision.transforms.PILToTensor()(org)
+        org = torch.unsqueeze(org, 0).float()
+        org = torchvision.transforms.Resize((256,256))(org)
+        
+        pred = Image.open(pred_img).convert('L')
+        gt_name = '_'.join(os.path.basename(pred_img).split('_')[:4]) + '.png'
+        gt = Image.open(os.path.join(gt_path, gt_name)).convert('L')
+        pred = torchvision.transforms.PILToTensor()(pred)
+        pred = torch.unsqueeze(pred,0).float() 
+        pred = pred / pred.max()
+        # if args.debug:
+        #     print('pred max is', pred.max())
+        #     vutils.save_image(pred, fp = os.path.join('./results/' + str(ind)+'pred.jpg'), nrow = 1, padding = 10)
+        gt = torchvision.transforms.PILToTensor()(gt)
+        gt = torchvision.transforms.Resize((256,256))(gt)
+        gt = torch.unsqueeze(gt,0).float() / 255.0
+        # if args.debug:
+        #     vutils.save_image(gt, fp = os.path.join('./results/' + str(ind)+'gt.jpg'), nrow = 1, padding = 10)
+        temp = eval_seg(pred, gt)
+        iou, dice = temp
+        mix_res = tuple([sum(a) for a in zip(mix_res, temp)])
+        
+        merged = th.cat((org, pred.repeat(1, 3, 1, 1), gt.repeat(1, 3, 1, 1)), dim=2).squeeze().permute(2, 1, 0).numpy()
+        merged = Image.fromarray(merged.astype(np.uint8) * 255)
+        
+        draw = ImageDraw.Draw(merged)
+        draw.text((10, 10), f"IoU: {iou:.4f} Dice: {dice:.4f}", 255) 
+        merged.save(os.path.join(res_path, gt_name.split(".")[0]+f'_iou_{iou:.4f}_dice_{dice:.4f}.png'))
+        
+        results_list.append([gt_name, round(iou, 6), round(dice, 6)])
+        
     iou, dice = tuple([a/num for a in mix_res])
     print('iou is',iou)
     print('dice is', dice)
+    
+    df = pd.DataFrame(results_list, columns=['gt_name', 'iou', 'dice'])
+
+    csv_path = os.path.join(res_path, 'results.csv')
+    df.to_csv(csv_path, index=False)
+
+    print(f'Results saved to: {csv_path}')
 
 if __name__ == "__main__":
     main()

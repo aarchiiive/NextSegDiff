@@ -3,25 +3,16 @@ This code started out as a PyTorch port of Ho et al's diffusion models:
 https://github.com/hojonathanho/diffusion/blob/1e0dceb3b3495bbe19116a5e1b3596cd0706c543/diffusion_tf/diffusion_utils_2.py
 Docstrings have been added, as well as DDIM sampling and a new collection of beta schedules.
 """
-from torch.autograd import Variable
 import enum
-import torch.nn.functional as F
-from torchvision.utils import save_image
 import torch
 import math
-import os
 # from visdom import Visdom
 # viz = Visdom(port=8850)
 import numpy as np
 import torch as th
-import torch.nn as nn
-from .train_util import visualize
 from .nn import mean_flat
 from .losses import normal_kl, discretized_gaussian_log_likelihood
-from scipy import ndimage
-from torchvision import transforms
-from .utils import staple, dice_score, norm
-import torchvision.utils as vutils
+from .utils import dice_score, norm
 from .dpm_solver import NoiseScheduleVP, model_wrapper, DPM_Solver
 import string
 import random
@@ -412,7 +403,7 @@ class GaussianDiffusion:
     def sample_known(self, img, batch_size = 1):
         image_size = self.image_size
         channels = self.channels
-        return self.p_sample_loop_known(model,(batch_size, channels, image_size, image_size), img)
+        return self.p_sample_loop_known(model, (batch_size, channels, image_size, image_size), img)
 
     def p_sample(
         self,
@@ -526,7 +517,7 @@ class GaussianDiffusion:
         noise = th.randn_like(img[:, :1, ...]).to(device)
         x_noisy = torch.cat((img[:, :-1,  ...], noise), dim=1)  #add noise as the last channel
         img=img.to(device)
-
+        
         if self.dpm_solver:
             final = {}
             noise_schedule = NoiseScheduleVP(schedule='discrete', betas= th.from_numpy(self.betas))
@@ -586,6 +577,8 @@ class GaussianDiffusion:
                 #     compose = th.cat(tup,0)
                 #     vutils.save_image(s, fp = os.path.join('../res_temp_norm_6000_100', name+str(i)+".jpg"), nrow = 1, padding = 10)
 
+            print("Dice :", dice_score(final["sample"][:,-1,:,:].unsqueeze(1), final["cal"]))
+            
             if dice_score(final["sample"][:,-1,:,:].unsqueeze(1), final["cal"]) < 0.65:
                 cal_out = torch.clamp(final["cal"] + 0.25 * final["sample"][:,-1,:,:].unsqueeze(1), 0, 1)
             else:
