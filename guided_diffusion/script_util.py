@@ -65,6 +65,7 @@ def model_and_diffusion_defaults():
         use_new_attention_order=False,
         dpm_solver = False,
         version = 'new',
+        cam_path=None,
     )
     res.update(diffusion_defaults())
     return res
@@ -103,6 +104,7 @@ def create_model_and_diffusion(
     use_new_attention_order,
     dpm_solver,
     version,
+    cam_path,
 ):
     model = create_model(
         image_size,
@@ -122,7 +124,8 @@ def create_model_and_diffusion(
         resblock_updown=resblock_updown,
         use_fp16=use_fp16,
         use_new_attention_order=use_new_attention_order,
-        version = version,
+        version=version,
+        cam_path=cam_path,
     )
     diffusion = create_gaussian_diffusion(
         steps=diffusion_steps,
@@ -156,7 +159,8 @@ def create_model(
     resblock_updown=False,
     use_fp16=False,
     use_new_attention_order=False,
-    version = 'new',
+    version='new',
+    cam_path=None
 ):
     if channel_mult == "":
         if image_size == 512:
@@ -194,6 +198,7 @@ def create_model(
         use_scale_shift_norm=use_scale_shift_norm,
         resblock_updown=resblock_updown,
         use_new_attention_order=use_new_attention_order,
+        cam_path=cam_path
     ) if version == 'new' else UNetModel_v1preview(
         image_size=image_size,
         in_channels=in_ch,
@@ -425,6 +430,7 @@ def create_gaussian_diffusion(
     rescale_timesteps=False,
     rescale_learned_sigmas=False,
     timestep_respacing="",
+    use_fp16=False,
 ):
     betas = gd.get_named_beta_schedule(noise_schedule, steps)
     if use_kl:

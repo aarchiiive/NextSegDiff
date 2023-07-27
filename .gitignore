@@ -1,2 +1,5 @@
 /dataset/*
 /plots/*
+/wandb/*
+*.pyc
+__pycache/

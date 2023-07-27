@@ -129,12 +129,14 @@ class GaussianDiffusion:
         loss_type,
         dpm_solver,
         rescale_timesteps=False,
+        use_fp16=False,
     ):
         self.model_mean_type = model_mean_type
         self.model_var_type = model_var_type
         self.loss_type = loss_type
         self.rescale_timesteps = rescale_timesteps
         self.dpm_solver = dpm_solver
+        self.use_fp16 = use_fp16
 
         # Use float64 for accuracy.
         betas = np.array(betas, dtype=np.float64)
@@ -358,8 +360,10 @@ class GaussianDiffusion:
 
     def _scale_timesteps(self, t):
         if self.rescale_timesteps:
-
-            return t.float() * (1000.0 / self.num_timesteps)
+            if self.use_fp16: t = t.half()
+            else: t.float()
+            
+            return t * (1000.0 / self.num_timesteps)
         return t
 
     def condition_mean(self, cond_fn, p_mean_var, x, t, org, model_kwargs=None):
@@ -986,10 +990,11 @@ class GaussianDiffusion:
         res = torch.where(mask > 0, 1, 0)   #merge all tumor classes into one to get a binary segmentation mask
 
         res_t = self.q_sample(res, t, noise=noise)     #add noise to the segmentation channel
-        x_t=x_start.float()
+        x_t = x_start.float()
         x_t[:, -1:, ...]=res_t.float()
         terms = {}
-
+        
+        if self.use_fp16: x_t = x_t.half()
 
         if self.loss_type == LossType.MSE or self.loss_type == LossType.BCE_DICE or self.loss_type == LossType.RESCALED_MSE:
 

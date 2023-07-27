@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.functional as F
 
 from .fp16_util import convert_module_to_f16, convert_module_to_f32
 from .upsample import Upsample
@@ -8,6 +9,10 @@ from .resblock import ResBlock
 from .generic_unet import Generic_UNet
 from .timestep import TimestepEmbedSequential
 from .attention import AttentionBlock
+from .pytorch_grad_cam import (
+    GradCAM,
+    GradCAMPlusPlus
+)
 from .nn import (
     conv_nd,
     linear,
@@ -70,6 +75,7 @@ class UNetModel_newpreview(nn.Module):
         resblock_updown=False,
         use_new_attention_order=False,
         high_way = True,
+        cam_path=None
     ):
         super().__init__()
 
@@ -91,6 +97,8 @@ class UNetModel_newpreview(nn.Module):
         self.num_heads = num_heads
         self.num_head_channels = num_head_channels
         self.num_heads_upsample = num_heads_upsample
+        
+        self.cam_path = cam_path
 
         time_embed_dim = model_channels * 4
         self.time_embed = nn.Sequential(
@@ -248,7 +256,10 @@ class UNetModel_newpreview(nn.Module):
             nn.SiLU(),
             zero_module(conv_nd(dims, model_channels , out_channels, 3, padding=1)),
         )
-
+        
+        print(self.output_blocks[-1])
+        self.grad_cam = GradCAMPlusPlus(model=self, target_layers=self.output_blocks[-1], use_cuda=True)
+        exit()
         if high_way:
             features = 32
             self.hwm = Generic_UNet(self.in_channels - 1, features, 1, 5, anchor_out=True, upscale_logits=True)
@@ -327,6 +338,25 @@ class UNetModel_newpreview(nn.Module):
             h = module(h, emb)
         h = h.type(x.dtype)
         out = self.out(h)
+        
+        if self.cam_path is not None:
+            
+            pass
+            # print(out.shape)
+            # print(torch.max(out))
+            # # # Grad-CAM
+            # grad_outputs = torch.zeros_like(out)
+            # grad_outputs[:, target_class_idx] = 1.0
+
+            # out.backward(gradient=grad_outputs, retain_graph=True)
+            # gradients = x.grad  # Grad-CAM에 사용할 gradient
+
+            # pooled_gradients = torch.mean(gradients, dim=[2, 3], keepdim=True)
+
+            # cam = F.relu(torch.sum(pooled_gradients * out, dim=1, keepdim=True))
+            # cam = F.interpolate(cam, size=x.shape[2:], mode="bilinear", align_corners=False)
+            # cam = (cam - torch.min(cam)) / (torch.max(cam) - torch.min(cam))  # Normalize
+        
         return out, cal
 
 def print_module_training_status(module):
@@ -336,3 +366,6 @@ def print_module_training_status(module):
             or isinstance(module, nn.BatchNorm2d) or isinstance(module, nn.BatchNorm3d) or isinstance(module,
                                                                                                       nn.BatchNorm1d):
         print(str(module), module.training)
+
+if __name__ == "__main__":
+    model = UNetModel_newpreview(256, 128, 16, 16, 16, 1000)

@@ -81,6 +81,7 @@ class TrainLoop:
         self.sync_cuda = th.cuda.is_available()
 
         self._load_and_sync_parameters()
+        
         self.mp_trainer = MixedPrecisionTrainer(
             model=self.model,
             use_fp16=self.use_fp16,
@@ -216,15 +217,28 @@ class TrainLoop:
 
         self.mp_trainer.zero_grad()
         for i in range(0, batch.shape[0], self.microbatch):
-            micro = batch[i : i + self.microbatch].to(dist_util.dev())
-            micro_cond = {
+            micro = batch[i : i + self.microbatch]
+            
+            if self.use_fp16:
+                micro = micro.half()
+                micro_cond = {
+                k: v[i : i + self.microbatch].half().to(dist_util.dev())
+                    for k, v in cond.items()
+                }
+            else:
+                micro_cond = {
                 k: v[i : i + self.microbatch].to(dist_util.dev())
-                for k, v in cond.items()
-            }
+                    for k, v in cond.items()
+                }
+                
+            micro = micro.to(dist_util.dev())
 
             last_batch = (i + self.microbatch) >= batch.shape[0]
             t, weights = self.schedule_sampler.sample(micro.shape[0], dist_util.dev())
-
+            
+            if self.use_fp16:
+                weights = weights.half()
+                
             compute_losses = functools.partial(
                 self.diffusion.training_losses_segmentation,
                 self.ddp_model,

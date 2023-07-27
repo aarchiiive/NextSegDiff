@@ -1,4 +1,5 @@
 
+import os
 import sys
 import argparse
 sys.path.append("../")
@@ -30,8 +31,11 @@ def main():
     args = create_argparser().parse_args()
 
     dist_util.setup_dist(args)
+    
+    args.cam_path = os.path.join(args.out_dir, "gradcam")
+    if args.vis and not os.path.isdir(args.cam_path): os.makedirs(args.cam_path, exist_ok=True)
+    
     logger.configure(dir = args.out_dir)
-
     logger.log("creating data loader...")
     
     if args.data_name == 'ISIC':
@@ -84,6 +88,8 @@ def main():
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
     
+    if args.use_fp16: model.convert_to_fp16()
+    
     if args.multi_gpu:
         model = th.nn.DataParallel(model,device_ids=[int(id) for id in args.multi_gpu.split(',')])
         model.to(device = th.device('cuda', int(args.gpu_dev)))
@@ -112,8 +118,6 @@ def main():
         weight_decay=args.weight_decay,
         lr_anneal_steps=args.lr_anneal_steps,
     ).run_loop()
-    
-        
 
 
 def create_argparser():
@@ -135,7 +139,9 @@ def create_argparser():
         fp16_scale_growth=1e-3,
         gpu_dev = "0",
         multi_gpu = None, #"0,1,2"
-        out_dir='./results/'
+        out_dir='./results/',
+        cam_path=None,
+        vis=False,
     )
     defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()

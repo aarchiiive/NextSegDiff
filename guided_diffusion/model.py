@@ -314,21 +314,18 @@ class UNetModel_V(nn.Module):
         h = h.type(x.dtype)
         out = self.out(h)
         
-        # Grad-CAM
-        grad_outputs = torch.zeros_like(out)
-        grad_outputs[:, target_class_idx] = 1.0
+        # # Grad-CAM
+        # grad_outputs = torch.zeros_like(out)
+        # grad_outputs[:, target_class_idx] = 1.0
 
-        # 중요한 영역을 구하기 위해 모델 출력에 대한 입력의 gradient를 계산합니다.
-        out.backward(gradient=grad_outputs, retain_graph=True)
-        gradients = x.grad  # Grad-CAM에 사용할 gradient
+        # out.backward(gradient=grad_outputs, retain_graph=True)
+        # gradients = x.grad  # Grad-CAM에 사용할 gradient
 
-        # Gradient의 평균을 구합니다.
-        pooled_gradients = torch.mean(gradients, dim=[2, 3], keepdim=True)
+        # pooled_gradients = torch.mean(gradients, dim=[2, 3], keepdim=True)
 
-        # 각 feature map에 대해 gradient를 곱하여 중요도를 얻습니다.
-        cam = F.relu(torch.sum(pooled_gradients * out, dim=1, keepdim=True))
-        cam = F.interpolate(cam, size=x.shape[2:], mode="bilinear", align_corners=False)
-        cam = (cam - torch.min(cam)) / (torch.max(cam) - torch.min(cam))  # Normalize
+        # cam = F.relu(torch.sum(pooled_gradients * out, dim=1, keepdim=True))
+        # cam = F.interpolate(cam, size=x.shape[2:], mode="bilinear", align_corners=False)
+        # cam = (cam - torch.min(cam)) / (torch.max(cam) - torch.min(cam))  # Normalize
         
         return out, cal
     
