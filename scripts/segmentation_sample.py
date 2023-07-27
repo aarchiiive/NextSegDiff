@@ -2,8 +2,6 @@
 
 import argparse
 import os
-from ssl import OP_NO_TLSv1
-import nibabel as nib
 # from visdom import Visdom
 # viz = Visdom(port=8850)
 import sys
@@ -14,7 +12,6 @@ sys.path.append(".")
 import numpy as np
 import time
 import torch as th
-from PIL import Image
 import torch.distributed as dist
 from guided_diffusion import dist_util, logger
 from dataloader.bratsloader import BRATSDataset, BRATSDataset3D

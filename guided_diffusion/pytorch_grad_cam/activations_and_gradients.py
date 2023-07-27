@@ -1,3 +1,4 @@
+
 class ActivationsAndGradients:
     """ Class for extracting activations and
     registering gradients from targetted intermediate layers """
@@ -44,3 +45,12 @@ class ActivationsAndGradients:
     def release(self):
         for handle in self.handles:
             handle.remove()
+            
+class ActivationsAndGradientsTimesteps(ActivationsAndGradients):
+    def __init__(self, model, target_layers, reshape_transform): 
+        super(ActivationsAndGradientsTimesteps, self).__init__(model, target_layers, reshape_transform)
+        
+    def __call__(self, x, t):
+        self.gradients = []
+        self.activations = []
+        return self.model(x, t)

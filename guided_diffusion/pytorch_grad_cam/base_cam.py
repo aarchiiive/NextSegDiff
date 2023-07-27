@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import ttach as tta
 from typing import Callable, List, Tuple
-from .activations_and_gradients import ActivationsAndGradients
+from .activations_and_gradients import ActivationsAndGradients, ActivationsAndGradientsTimesteps
 from .utils.svd_on_activations import get_2d_projection
 from .utils.image import scale_cam_image
 from .utils.model_targets import ClassifierOutputTarget
@@ -13,19 +13,26 @@ class BaseCAM:
                  model: torch.nn.Module,
                  target_layers: List[torch.nn.Module],
                  use_cuda: bool = False,
+                 device: torch.device = torch.device("cuda:0"),
                  reshape_transform: Callable = None,
                  compute_input_gradient: bool = False,
-                 uses_gradients: bool = True) -> None:
+                 uses_gradients: bool = True,
+                 use_timesteps: bool = True) -> None:
         self.model = model.eval()
         self.target_layers = target_layers
         self.cuda = use_cuda
+        self.device = device
         if self.cuda:
-            self.model = model.cuda()
+            self.model = model.to(self.device)
         self.reshape_transform = reshape_transform
         self.compute_input_gradient = compute_input_gradient
         self.uses_gradients = uses_gradients
-        self.activations_and_grads = ActivationsAndGradients(
-            self.model, target_layers, reshape_transform)
+        if use_timesteps:
+            self.activations_and_grads = ActivationsAndGradientsTimesteps(
+                self.model, target_layers, reshape_transform)
+        else:
+            self.activations_and_grads = ActivationsAndGradients(
+                self.model, target_layers, reshape_transform)
 
     """ Get a vector of weights for every channel in the target layer.
         Methods that return weights channels,
@@ -60,18 +67,28 @@ class BaseCAM:
         return cam
 
     def forward(self,
-                input_tensor: torch.Tensor,
+                x,
                 targets: List[torch.nn.Module],
                 eigen_smooth: bool = False) -> np.ndarray:
 
-        if self.cuda:
-            input_tensor = input_tensor.cuda()
+        if isinstance(x, dict):
+            if "step" in x.keys():
+                t = x["step"]
+                x = x["noisy"].to(self.device)
+                
+            outputs, cal = self.activations_and_grads(x, t)
+            
+            print(outputs)
+            print(cal)
+            
+        elif isinstance(x, torch.Tensor):
+            if self.cuda:
+                x = x.to(self.device)
 
-        if self.compute_input_gradient:
-            input_tensor = torch.autograd.Variable(input_tensor,
-                                                   requires_grad=True)
-
-        outputs = self.activations_and_grads(input_tensor)
+            if self.compute_input_gradient:
+                x = torch.autograd.Variable(x, requires_grad=True)
+            outputs = self.activations_and_grads(x)
+        
         if targets is None:
             target_categories = np.argmax(outputs.cpu().data.numpy(), axis=-1)
             targets = [ClassifierOutputTarget(
@@ -92,7 +109,7 @@ class BaseCAM:
         # This gives you more flexibility in case you just want to
         # use all conv layers for example, all Batchnorm layers,
         # or something else.
-        cam_per_layer = self.compute_cam_per_layer(input_tensor,
+        cam_per_layer = self.compute_cam_per_layer(x,
                                                    targets,
                                                    eigen_smooth)
         return self.aggregate_multi_layers(cam_per_layer)

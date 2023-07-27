@@ -6,9 +6,9 @@ from .base_cam import BaseCAM
 
 class GradCAMPlusPlus(BaseCAM):
     def __init__(self, model, target_layers, use_cuda=False,
-                 reshape_transform=None):
+                 device=None, reshape_transform=None, use_timesteps=False):
         super(GradCAMPlusPlus, self).__init__(model, target_layers, use_cuda,
-                                              reshape_transform)
+                                              device, reshape_transform, use_timesteps)
 
     def get_cam_weights(self,
                         input_tensor,

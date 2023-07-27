@@ -259,7 +259,7 @@ class UNetModel_newpreview(nn.Module):
         
         print(self.output_blocks[-1])
         self.grad_cam = GradCAMPlusPlus(model=self, target_layers=self.output_blocks[-1], use_cuda=True)
-        exit()
+        
         if high_way:
             features = 32
             self.hwm = Generic_UNet(self.in_channels - 1, features, 1, 5, anchor_out=True, upscale_logits=True)
