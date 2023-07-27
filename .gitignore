@@ -1,5 +1,7 @@
-/dataset/*
-/plots/*
-/wandb/*
+dataset/*
+plots/*
+wandb/*
+gradcam/*
+
 *.pyc
 __pycache/
