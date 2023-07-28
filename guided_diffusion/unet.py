@@ -257,7 +257,6 @@ class UNetModel_newpreview(nn.Module):
             zero_module(conv_nd(dims, model_channels , out_channels, 3, padding=1)),
         )
         
-        print(self.output_blocks[-1])
         self.grad_cam = GradCAMPlusPlus(model=self, target_layers=self.output_blocks[-1], use_cuda=True)
         
         if high_way:

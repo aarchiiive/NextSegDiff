@@ -7,6 +7,10 @@ from .utils.svd_on_activations import get_2d_projection
 from .utils.image import scale_cam_image
 from .utils.model_targets import ClassifierOutputTarget
 
+# import sys
+# sys.path.append("../")
+# sys.path.append("./")
+# from gaussian_diffusion.gaussian_diffusion
 
 class BaseCAM:
     def __init__(self,
@@ -73,13 +77,10 @@ class BaseCAM:
 
         if isinstance(x, dict):
             if "step" in x.keys():
-                t = x["step"]
+                t = x["step"].to(self.device)
                 x = x["noisy"].to(self.device)
                 
             outputs, cal = self.activations_and_grads(x, t)
-            
-            print(outputs)
-            print(cal)
             
         elif isinstance(x, torch.Tensor):
             if self.cuda:

@@ -6,6 +6,7 @@ import time
 import random
 import argparse
 import numpy as np
+from tqdm import tqdm
 
 import torch
 from torchvision import transforms
@@ -153,26 +154,28 @@ def main():
         model.convert_to_fp16()
     model.eval()
     
-    target_layers = [model.output_blocks[-1]]
+    target_layers = [model.output_blocks[-1][-1].out_layers[-1]]
     cam = GradCAMPlusPlus(model=model, target_layers=target_layers, use_cuda=True, device=device)
     
-    for img, mask, path in data:
-        rgb_img = img.repeat(1, 3, 1, 1).squeeze(0).numpy()
+    print(target_layers)
+    
+    for img, mask, path in tqdm(data):
+        rgb_img = img.squeeze(0).swapaxes(0, 2).numpy()
         img = img.to(device)
         mask = mask.to(device)
         noise = torch.randn_like(img[:, :1, ...]).to(device)
         x_noisy = torch.cat((img, noise), 1)
         batch = {"noisy" : x_noisy,
-                 "step" : int(args.diffusion_steps)}
+                 "step" : torch.tensor([int(args.diffusion_steps)])}
         
         targets = [SemanticSegmentationTarget(-1, mask.squeeze(0).cpu().numpy(), device)]
         grayscale_cam = cam(input_tensor=batch, targets=targets)[0, :]
         cam_image = show_cam_on_image(rgb_img, grayscale_cam, use_rgb=True)
         
-        cv2.imwrite(os.path.join(args.out_dir, path), cam_image)
-        print(target_layers)
-        print(grayscale_cam.shape)
-        print(batch.shape)
+        # print(cam_image)
+        # print(cam_image.shape)
+         
+        cv2.imwrite(os.path.join(args.out_dir, path[0]), cam_image)
 
 def create_argparser():
     defaults = dict(

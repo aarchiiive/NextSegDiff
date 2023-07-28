@@ -174,21 +174,21 @@ class AMOSDataset3D(torch.utils.data.Dataset):
 
 if __name__ == "__main__":
     data_dir = "AMOS" # nii.gz 파일이 있는 폴더
-    phase = "Tr"
+    phase = "Va"
     
     class_names = {0: "background", 1: "spleen", 2: "right kidney", 3: "left kidney", 
                    4: "gall bladder", 5: "esophagus", 6: "liver", 7: "stomach", 
                    8: "arota", 9: "postcava", 10: "pancreas", 11: "right adrenal gland", 
                    12: "left adrenal gland", 13: "duodenum", 14: "bladder", 15: "prostate,uterus"}
-    target_class = 7
+    target_class = 10
     
-    save_path = f"{data_dir}2D/{class_names[target_class]}" if target_class is not None else f"{data_dir}2D"
+    save_path = f"dataset/{data_dir}2D/{class_names[target_class]}" if target_class is not None else f"dataset/{data_dir}2D"
     
     if not os.path.isdir(f"{save_path}/images{phase}"):
         os.makedirs(f"{save_path}/images{phase}", exist_ok=True)
         os.makedirs(f"{save_path}/labels{phase}", exist_ok=True)
     
-    dataset = AMOSDataset(data_dir, 
+    dataset = AMOSDataset(os.path.join("dataset", data_dir), 
                           None, 
                           phase, 
                           save_path=save_path, 
