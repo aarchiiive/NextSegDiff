@@ -1,7 +1,12 @@
-dataset/*
-plots/*
-wandb/*
-gradcam/*
+/dataset/*
+/plots/*
+/wandb/*
+/gradcam/*
+/temp/*
 
+*.png
+*.jpg
 *.pyc
+*.pt
+*.csv
 __pycache/
